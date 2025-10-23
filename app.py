@@ -3994,6 +3994,101 @@ def add_patient_chat(patient):
         }}, 1000);
     }}
 
+    // Generate concise voice response (key points only, no redundant numbers)
+    function generateVoiceResponse(userMessage) {{
+        const msg = userMessage.toLowerCase();
+        const p = patientData;
+
+        if (msg.includes('file') || msg.includes('attach') || msg.includes('upload') || msg.includes('document')) {{
+            return `File attachment feature is available. Click the paperclip button to attach documents.`;
+        }}
+
+        if (msg.includes('clear') || msg.includes('reset')) {{
+            return 'Clearing chat history';
+        }} else if (msg.includes('name') || msg.includes('who')) {{
+            return `This is ${{p.name}}, a ${{p.age}} year old ${{p.gender}} patient in ${{p.department}} department.`;
+        }} else if (msg.includes('age')) {{
+            return `Patient is ${{p.age}} years old.`;
+        }} else if (msg.includes('glucose') || msg.includes('sugar') || msg.includes('blood sugar')) {{
+            if (p.glucose > 140) return 'Glucose is elevated. This may indicate diabetes risk. Recommend close monitoring.';
+            if (p.glucose < 70) return 'Glucose is low. Hypoglycemia concern. Immediate attention needed.';
+            return 'Glucose level is within normal range.';
+        }} else if (msg.includes('creatinine') || msg.includes('kidney')) {{
+            if (p.creatinine > 1.2) return 'Creatinine is elevated, indicating potential kidney dysfunction. Recommend nephrology consultation.';
+            return 'Creatinine level is normal. Kidney function appears healthy.';
+        }} else if (msg.includes('hematocrit') || msg.includes('hct') || msg.includes('blood count')) {{
+            if (p.hematocrit < 38) return 'Hematocrit is low. Possible anemia. Recommend further investigation.';
+            if (p.hematocrit > 50) return 'Hematocrit is high. May indicate dehydration or polycythemia.';
+            return 'Hematocrit is within normal range.';
+        }} else if (msg.includes('sodium') || msg.includes('na')) {{
+            if (p.sodium < 135) return 'Sodium is low. Hyponatremia detected. Monitor electrolyte balance.';
+            if (p.sodium > 145) return 'Sodium is high. Hypernatremia detected. Check hydration status.';
+            return 'Sodium level is normal.';
+        }} else if (msg.includes('bun') || msg.includes('urea')) {{
+            if (p.bun > 20) return 'BUN is elevated. Check kidney function and hydration.';
+            return 'BUN is within normal range.';
+        }} else if (msg.includes('lab') || msg.includes('test') || msg.includes('result')) {{
+            let concerns = [];
+            if (p.glucose > 140 || p.glucose < 70) concerns.push('glucose');
+            if (p.creatinine > 1.2) concerns.push('creatinine');
+            if (p.hematocrit < 38 || p.hematocrit > 50) concerns.push('hematocrit');
+            if (p.sodium < 135 || p.sodium > 145) concerns.push('sodium');
+            if (p.bun > 20) concerns.push('BUN');
+
+            if (concerns.length > 0) {{
+                return `I see ${{concerns.length}} value${{concerns.length > 1 ? 's' : ''}} that need attention: ${{concerns.join(', ')}}. Ask about specific tests for details.`;
+            }} else {{
+                return 'All lab results are within normal ranges.';
+            }}
+        }} else if (msg.includes('risk') || msg.includes('危险')) {{
+            if (p.risk === 'High Risk') {{
+                return 'This is a high risk patient. Close monitoring is required.';
+            }} else {{
+                return 'Patient has standard risk level.';
+            }}
+        }} else if (msg.includes('readmit') || msg.includes('return')) {{
+            if (p.readmit === 'Yes') {{
+                return 'Patient has previous readmissions. Enhanced discharge planning recommended.';
+            }} else {{
+                return 'No previous readmissions on record.';
+            }}
+        }} else if (msg.includes('stay') || msg.includes('los') || msg.includes('length')) {{
+            if (p.los > 7) return `Extended stay of ${{p.los}} days. Monitor for complications.`;
+            if (p.los > 3) return `Moderate stay of ${{p.los}} days in ${{p.department}}.`;
+            return `Short stay of ${{p.los}} days.`;
+        }} else if (msg.includes('department') || msg.includes('where')) {{
+            return `Patient is in ${{p.department}} department.`;
+        }} else if (msg.includes('recommend') || msg.includes('suggest') || msg.includes('care')) {{
+            let recommendations = [];
+            if (p.glucose > 140) recommendations.push('Monitor blood glucose closely');
+            if (p.creatinine > 1.2) recommendations.push('Consult nephrology');
+            if (p.hematocrit < 38) recommendations.push('Investigate anemia');
+            if (p.los > 7) recommendations.push('Review discharge planning');
+            if (p.risk === 'High Risk') recommendations.push('Enhanced monitoring');
+
+            if (recommendations.length > 0) {{
+                return `I have ${{recommendations.length}} recommendation${{recommendations.length > 1 ? 's' : ''}}: ${{recommendations.join(', ')}}.`;
+            }} else {{
+                return 'Continue standard care. All indicators are acceptable.';
+            }}
+        }} else if (msg.includes('summary') || msg.includes('overview')) {{
+            let concerns = [];
+            if (p.glucose > 140 || p.glucose < 70) concerns.push('abnormal glucose');
+            if (p.creatinine > 1.2) concerns.push('elevated creatinine');
+            if (p.risk === 'High Risk') concerns.push('high risk status');
+
+            if (concerns.length > 0) {{
+                return `${{p.name}}, ${{p.age}} years old, ${{p.gender}}, in ${{p.department}}. Key concerns: ${{concerns.join(', ')}}.`;
+            }} else {{
+                return `${{p.name}}, ${{p.age}} years old, ${{p.gender}}, in ${{p.department}}. All indicators are stable.`;
+            }}
+        }} else if (msg.includes('help')) {{
+            return 'I can help with patient demographics, lab results, risk assessment, and care recommendations. What would you like to know?';
+        }} else {{
+            return `I can help you analyze ${{p.name}}'s medical record. Ask about lab results, risk level, or care recommendations.`;
+        }}
+    }}
+
     function generatePatientResponse(userMessage) {{
         const msg = userMessage.toLowerCase();
         const p = patientData;
@@ -4352,8 +4447,9 @@ Provide professional medical analysis, explain lab values, identify abnormalitie
 
             chatMessages.scrollTop = chatMessages.scrollHeight;
 
-            // Always speak the response with high-quality TTS
-            speakResponse(response);
+            // Generate concise voice response (no redundant numbers, focus on key points)
+            const voiceResponse = generateVoiceResponse(message);
+            speakResponse(voiceResponse);
         }}
     }};
     </script>
