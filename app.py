@@ -2532,6 +2532,9 @@ def show_patient_detail(patient_id, df):
     # Add patient-specific floating chat widget with voice support
     add_patient_chat(patient)
 
+    # Add real-time voice chat using OpenAI Realtime API
+    add_patient_voice_chat(patient)
+
 def main():
     # Initialize session state
     if "current_page" not in st.session_state:
@@ -4323,7 +4326,7 @@ def add_patient_voice_chat(patient):
         .voice-chat-container {{
             position: fixed;
             bottom: 30px;
-            right: 30px;
+            right: 110px;
             z-index: 1000;
         }}
 
@@ -4383,7 +4386,7 @@ def add_patient_voice_chat(patient):
         .transcript-box {{
             position: fixed;
             bottom: 120px;
-            right: 30px;
+            right: 110px;
             width: 350px;
             max-height: 400px;
             background: white;
