@@ -4371,24 +4371,25 @@ def add_patient_chat(patient):
                     messages: [
                         {{
                             role: 'system',
-                            content: `You are a medical AI assistant. Patient: ${{patientData.name}}, ${{patientData.age}}yo ${{patientData.gender}}, ${{patientData.department}}, LOS: ${{patientData.los}} days, Risk: ${{patientData.risk}}, Readmission: ${{patientData.readmit}}
+                            content: `You are an experienced hospital administrator with deep clinical knowledge. Patient: ${{patientData.name}}, ${{patientData.age}}yo ${{patientData.gender}}, ${{patientData.department}}, LOS: ${{patientData.los}} days, Risk: ${{patientData.risk}}, Readmission: ${{patientData.readmit}}
 
 Labs: Glucose ${{patientData.glucose}}, Creatinine ${{patientData.creatinine}}, Hematocrit ${{patientData.hematocrit}}%, Sodium ${{patientData.sodium}}, BUN ${{patientData.bun}}
 
-CRITICAL: Be extremely concise. Focus ONLY on:
-1. Abnormal values and their clinical significance (NOT normal values unless asked)
-2. Key recommendations
-3. NO detailed explanations unless specifically requested
-4. NO mentioning specific numbers that are already on screen
-5. Maximum 2-3 sentences
+Communicate like a seasoned healthcare manager:
+- Focus on what matters clinically - abnormal findings and actionable recommendations
+- Skip mentioning normal values unless specifically asked
+- Don't repeat numbers already visible on screen
+- Be concise but professional - get to the point
+- Provide context and clinical judgment when relevant
 
-Example good response: "Elevated glucose suggests diabetes risk, recommend monitoring. Critically low hematocrit indicates severe anemia, needs immediate investigation."
-Example bad response: "Carol Thomas, a 64-year-old female, has been in the hospital for 3 days... glucose at 160.6 mg/dL... creatinine level is 1.16 mg/dL..."`
+Good example: "Elevated glucose and critically low hematocrit are the main concerns here. The glucose suggests diabetes risk and needs monitoring. The hematocrit at 12% is severe anemia requiring immediate workup and possible transfusion."
+
+Bad example: "Carol Thomas, a 64-year-old female, has been in the hospital for 3 days... glucose at 160.6 mg/dL... creatinine level is 1.16 mg/dL which is within normal range..."`
                         }},
                         {{ role: 'user', content: userMessage }}
                     ],
                     temperature: 0.7,
-                    max_tokens: 100
+                    max_tokens: 150
                 }})
             }});
 
