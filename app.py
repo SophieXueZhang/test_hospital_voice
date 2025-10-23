@@ -1378,6 +1378,55 @@ def show_patient_detail(patient_id, df):
 
     st.markdown("<br>", unsafe_allow_html=True)
 
+    # Patient Notes Section - Added for supplemental information
+    st.markdown("### 📝 Patient Notes")
+    st.markdown("Add supplemental information about this patient (symptoms, observations, care instructions, etc.):")
+
+    # Get existing notes
+    current_notes = get_patient_notes(patient_id)
+
+    # Create a text area for notes
+    notes_key = f"patient_notes_{patient_id}"
+    if notes_key not in st.session_state:
+        st.session_state[notes_key] = current_notes
+
+    # Display text area with existing notes
+    notes_text = st.text_area(
+        "",
+        value=st.session_state[notes_key],
+        height=120,
+        key=f"notes_input_{patient_id}",
+        placeholder="Example: Patient reports mild headache in the morning. Family history of diabetes noted. Prefers vegetarian diet. Food allergies: peanuts..."
+    )
+
+    # Save button
+    col1, col2, col3 = st.columns([1, 1, 4])
+    with col1:
+        if st.button("💾 Save Notes", key=f"save_notes_{patient_id}"):
+            if update_patient_notes(patient_id, notes_text):
+                st.session_state[notes_key] = notes_text
+                st.success("✅ Notes saved successfully!")
+                time.sleep(1)
+                st.rerun()
+            else:
+                st.error("❌ Failed to save notes. Please try again.")
+
+    with col2:
+        if st.button("🗑️ Clear Notes", key=f"clear_notes_{patient_id}"):
+            if update_patient_notes(patient_id, ""):
+                st.session_state[notes_key] = ""
+                st.success("✅ Notes cleared!")
+                time.sleep(1)
+                st.rerun()
+
+    # Show character count
+    if notes_text:
+        st.caption(f"📊 {len(notes_text)} characters | These notes will be included in AI chat responses")
+    else:
+        st.info("💡 Add notes here to provide additional context for the AI assistant during conversations.")
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
     # Clinical Decision Support
     st.markdown("### 🎯 Priority Actions")
     
@@ -1671,54 +1720,6 @@ def show_patient_detail(patient_id, df):
             
         st.write(f"**Risk count:** {patient['rcount']}")
         st.write(f"**Priority level:** {'High' if patient['risk_level'] == 'High Risk' else 'Standard'}")
-
-    # Patient Notes Section
-    st.markdown("<br>", unsafe_allow_html=True)
-    st.markdown("### 📝 Patient Notes")
-    st.markdown("Additional information and observations for this patient:")
-
-    # Get existing notes
-    current_notes = get_patient_notes(patient_id)
-
-    # Create a text area for notes
-    notes_key = f"patient_notes_{patient_id}"
-    if notes_key not in st.session_state:
-        st.session_state[notes_key] = current_notes
-
-    # Display text area with existing notes
-    notes_text = st.text_area(
-        "Enter supplemental information about this patient (symptoms, observations, care instructions, etc.):",
-        value=st.session_state[notes_key],
-        height=150,
-        key=f"notes_input_{patient_id}",
-        placeholder="Example: Patient reports mild headache in the morning. Family history of diabetes noted. Prefers vegetarian diet..."
-    )
-
-    # Save button
-    col1, col2, col3 = st.columns([1, 1, 4])
-    with col1:
-        if st.button("💾 Save Notes", key=f"save_notes_{patient_id}"):
-            if update_patient_notes(patient_id, notes_text):
-                st.session_state[notes_key] = notes_text
-                st.success("✅ Notes saved successfully!")
-                time.sleep(1)
-                st.rerun()
-            else:
-                st.error("❌ Failed to save notes. Please try again.")
-
-    with col2:
-        if st.button("🗑️ Clear Notes", key=f"clear_notes_{patient_id}"):
-            if update_patient_notes(patient_id, ""):
-                st.session_state[notes_key] = ""
-                st.success("✅ Notes cleared!")
-                time.sleep(1)
-                st.rerun()
-
-    # Show character count
-    if notes_text:
-        st.caption(f"📊 {len(notes_text)} characters | These notes will be included in AI chat responses")
-    else:
-        st.info("💡 Add notes here to provide additional context for the AI assistant during conversations.")
 
     # Simple chat toggle using Streamlit
     chat_state_key = f"show_chat_{patient_id}"
