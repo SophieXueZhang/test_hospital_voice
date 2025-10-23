@@ -4387,12 +4387,19 @@ Lab Results:
 - Sodium: ${{patientData.sodium}} mEq/L (normal: 135-145)
 - Blood Urea Nitrogen: ${{patientData.bun}} mg/dL (normal: 7-20)
 
-Provide professional medical analysis, explain lab values, identify abnormalities, and suggest care considerations. Keep responses concise and clear.`
+IMPORTANT: Your response will be read aloud via text-to-speech. Format your response as:
+
+TEXT: [Detailed written response for screen display with specific numbers and analysis]
+VOICE: [Concise summary for voice - focus on KEY POINTS only, NO specific numbers unless explicitly requested, clinical significance and recommendations only]
+
+Example:
+TEXT: Glucose is 145 mg/dL (elevated). This suggests hyperglycemia requiring monitoring.
+VOICE: Glucose elevated, diabetes risk, recommend monitoring.`
                         }},
                         {{ role: 'user', content: userMessage }}
                     ],
                     temperature: 0.7,
-                    max_tokens: 300
+                    max_tokens: 250
                 }})
             }});
 
@@ -4434,21 +4441,36 @@ Provide professional medical analysis, explain lab values, identify abnormalitie
         chatMessages.scrollTop = chatMessages.scrollHeight;
 
         // Get intelligent response from GPT
-        const response = await getGPTResponse(message);
+        const fullResponse = await getGPTResponse(message);
+
+        // Parse TEXT and VOICE sections
+        let textResponse = fullResponse;
+        let voiceResponse = fullResponse;
+
+        // Check if response contains TEXT: and VOICE: markers
+        if (fullResponse.includes('TEXT:') && fullResponse.includes('VOICE:')) {{
+            const textMatch = fullResponse.match(/TEXT:\s*([\s\S]*?)(?=VOICE:|$)/);
+            const voiceMatch = fullResponse.match(/VOICE:\s*([\s\S]*?)$/);
+
+            if (textMatch) textResponse = textMatch[1].trim();
+            if (voiceMatch) voiceResponse = voiceMatch[1].trim();
+        }} else {{
+            // Fallback: use generateVoiceResponse for concise version
+            voiceResponse = generateVoiceResponse(message);
+        }}
 
         const loading = document.getElementById('loading-msg');
         if (loading) {{
-            loading.innerHTML = response;
+            loading.innerHTML = textResponse;
             loading.removeAttribute('id');
 
             // Save bot response to history
-            history.push({{ role: 'assistant', content: response }});
+            history.push({{ role: 'assistant', content: textResponse }});
             saveChatHistory(history);
 
             chatMessages.scrollTop = chatMessages.scrollHeight;
 
-            // Generate concise voice response (no redundant numbers, focus on key points)
-            const voiceResponse = generateVoiceResponse(message);
+            // Speak the concise voice version
             speakResponse(voiceResponse);
         }}
     }};
