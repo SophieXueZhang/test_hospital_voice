@@ -671,6 +671,17 @@ def generate_patient_response(patient, user_question):
         patient_notes = get_patient_notes(patient_data['id'])
         notes_section = f"\n\nAdditional Clinical Notes:\n{patient_notes}" if patient_notes else ""
 
+        # Get uploaded file info
+        file_key = f"uploaded_file_{patient_data['id']}"
+        file_section = ""
+        if file_key in st.session_state:
+            file_info = st.session_state[file_key]
+            file_section = f"\n\nUploaded File:\n- Filename: {file_info['name']}\n- Type: {file_info['type']}"
+            if 'summary' in file_info and file_info['summary']:
+                file_section += f"\n- AI Analysis: {file_info['summary']}"
+            if 'content_preview' in file_info and file_info['content_preview']:
+                file_section += f"\n- Content Preview: {file_info['content_preview']}"
+
         # Create detailed system prompt with enhanced medical context
         system_prompt = f"""You are a senior medical AI assistant with expertise in clinical medicine, diagnostics, and patient care. Provide comprehensive, evidence-based medical responses.
 
@@ -692,7 +703,7 @@ Laboratory Results & Vitals:
 - BMI: {patient_data['bmi']:.1f}
 - Sodium: {patient_data['sodium']:.1f} mEq/L (normal: 136-145)
 - Neutrophils: {patient_data['neutrophils']:.1f}% (normal: 50-70)
-- Blood Urea Nitrogen: {patient_data['blood_urea_nitrogen']:.1f} mg/dL (normal: 7-20){notes_section}
+- Blood Urea Nitrogen: {patient_data['blood_urea_nitrogen']:.1f} mg/dL (normal: 7-20){notes_section}{file_section}
 
 Clinical Guidelines:
 1. Provide detailed, professional medical analysis
@@ -702,7 +713,7 @@ Clinical Guidelines:
 5. Explain medical reasoning clearly
 6. Address patient-specific risk factors
 7. Consider department-specific protocols and standards
-8. Pay special attention to any additional clinical notes provided"""
+8. Pay special attention to any additional clinical notes and uploaded files provided"""
 
         # Make API call to OpenAI with enhanced parameters
         response = client.chat.completions.create(
@@ -1756,12 +1767,13 @@ def show_patient_detail(patient_id, df):
     with st.container():
         col1, col2, col3 = st.columns([8, 1, 1])
         with col3:
-            # Chat button to toggle chat interface
-            if st.button("💬 Chat", key=f"chat_toggle_{patient_id}", help="Open AI Assistant"):
-                st.session_state[chat_state_key] = not st.session_state[chat_state_key]
+            # Chat button removed - commented out
+            # if st.button("💬 Chat", key=f"chat_toggle_{patient_id}", help="Open AI Assistant"):
+            #     st.session_state[chat_state_key] = not st.session_state[chat_state_key]
+            pass
 
-    # Show chat interface if toggled
-    if st.session_state[chat_state_key]:
+    # Show chat interface if toggled - DISABLED
+    if False:  # Chat interface disabled - was: st.session_state[chat_state_key]
         st.markdown("---")
         st.markdown(f"### 🤖 AI Medical Assistant")
         st.markdown(f"**Patient:** {patient['full_name']}")
@@ -3696,6 +3708,36 @@ def add_patient_chat(patient):
         background: white;
         border: 1px solid #E2E8F0;
     }}
+
+    .file-attachment {{
+        background: #E0F2FE;
+        border: 1px solid #BAE6FD;
+        border-radius: 8px;
+        padding: 8px 12px;
+        margin-bottom: 10px;
+        font-size: 13px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }}
+
+    .file-info {{
+        flex: 1;
+    }}
+
+    .file-remove {{
+        cursor: pointer;
+        padding: 2px 6px;
+        border-radius: 4px;
+        background: #FEE2E2;
+        border: none;
+        font-size: 12px;
+        transition: all 0.2s;
+    }}
+
+    .file-remove:hover {{
+        background: #FECACA;
+    }}
     </style>
     </head>
     <body>
@@ -3717,7 +3759,22 @@ def add_patient_chat(patient):
             <input type="text"
                    id="chat-input"
                    placeholder="Ask about patient data, medical terms..."
-                   style="width: 100%; padding: 12px 50px 12px 15px; border: 1px solid #E2E8F0; border-radius: 25px; outline: none; font-size: 14px; box-sizing: border-box;">
+                   style="width: 100%; padding: 12px 85px 12px 45px; border: 1px solid #E2E8F0; border-radius: 25px; outline: none; font-size: 14px; box-sizing: border-box;">
+            <!-- Hidden file input -->
+            <input type="file"
+                   id="fileInput"
+                   accept=".pdf,.jpg,.jpeg,.png,.txt,.doc,.docx,.csv"
+                   style="display: none;"
+                   onchange="handleFileSelect(event)">
+            <!-- File attachment button -->
+            <button id="attachBtn" onclick="document.getElementById('fileInput').click()"
+                    style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); background: none; border: none; font-size: 20px; cursor: pointer; padding: 5px; opacity: 0.6; transition: all 0.3s ease;"
+                    onmouseover="this.style.opacity='1'"
+                    onmouseout="this.style.opacity='0.6'"
+                    title="Attach file">
+                📎
+            </button>
+            <!-- Voice button -->
             <button id="voiceBtn" onclick="toggleVoiceInput()"
                     style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); background: none; border: none; font-size: 20px; cursor: pointer; padding: 5px; opacity: 0.6; transition: all 0.3s ease;"
                     onmouseover="this.style.opacity='1'"
@@ -3758,9 +3815,112 @@ def add_patient_chat(patient):
         location.reload();
     }}
 
+    // File attachment management with localStorage
+    const FILE_STORAGE_KEY = 'patient_file_' + patientData.name.replace(/\\s+/g, '_');
+
+    function loadAttachedFile() {{
+        try {{
+            const file = localStorage.getItem(FILE_STORAGE_KEY);
+            return file ? JSON.parse(file) : null;
+        }} catch (e) {{
+            console.error('Error loading attached file:', e);
+            return null;
+        }}
+    }}
+
+    function saveAttachedFile(fileData) {{
+        try {{
+            localStorage.setItem(FILE_STORAGE_KEY, JSON.stringify(fileData));
+        }} catch (e) {{
+            console.error('Error saving attached file:', e);
+        }}
+    }}
+
+    function removeAttachedFile() {{
+        localStorage.removeItem(FILE_STORAGE_KEY);
+        displayAttachedFile();
+    }}
+
+    function handleFileSelect(event) {{
+        const file = event.target.files[0];
+        if (!file) return;
+
+        // Read file content
+        const reader = new FileReader();
+
+        reader.onload = function(e) {{
+            const content = e.target.result;
+
+            // Store file info
+            const fileData = {{
+                name: file.name,
+                type: file.type,
+                size: file.size,
+                content: content.substring(0, 2000), // Store first 2000 chars
+                timestamp: new Date().toISOString()
+            }};
+
+            saveAttachedFile(fileData);
+            displayAttachedFile();
+
+            // Show confirmation in chat
+            const chatMessages = document.getElementById('chat-messages');
+            const fileMsg = document.createElement('div');
+            fileMsg.className = 'message bot-message';
+            fileMsg.innerHTML = `📎 File attached: <strong>${{file.name}}</strong> (${{(file.size / 1024).toFixed(1)}} KB)`;
+            chatMessages.appendChild(fileMsg);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            // Save to history
+            const history = loadChatHistory();
+            history.push({{ role: 'system', content: `File attached: ${{file.name}}` }});
+            saveChatHistory(history);
+        }};
+
+        reader.readAsText(file);
+
+        // Reset file input
+        event.target.value = '';
+    }}
+
+    function displayAttachedFile() {{
+        const fileData = loadAttachedFile();
+        const chatMessages = document.getElementById('chat-messages');
+
+        // Remove any existing file display
+        const existingDisplay = document.getElementById('file-display');
+        if (existingDisplay) {{
+            existingDisplay.remove();
+        }}
+
+        if (fileData) {{
+            // Create file display element
+            const fileDisplay = document.createElement('div');
+            fileDisplay.id = 'file-display';
+            fileDisplay.className = 'file-attachment';
+            fileDisplay.innerHTML = `
+                <div class="file-info">
+                    <strong>📎 ${{fileData.name}}</strong><br>
+                    <span style="font-size: 11px; color: #64748B;">
+                        ${{(fileData.size / 1024).toFixed(1)}} KB • ${{fileData.type || 'Unknown type'}}
+                    </span>
+                </div>
+                <button class="file-remove" onclick="removeAttachedFile()">🗑️</button>
+            `;
+
+            // Insert at the beginning of chat messages
+            chatMessages.insertBefore(fileDisplay, chatMessages.firstChild);
+        }}
+    }}
+
     function toggleFloatingChat() {{
         const chatWindow = document.getElementById('floating-chat-window');
         chatWindow.classList.toggle('visible');
+
+        // Display attached file when chat opens
+        if (chatWindow.classList.contains('visible')) {{
+            displayAttachedFile();
+        }}
     }}
 
     // Initialize chat on page load
@@ -3837,6 +3997,16 @@ def add_patient_chat(patient):
     function generatePatientResponse(userMessage) {{
         const msg = userMessage.toLowerCase();
         const p = patientData;
+        const attachedFile = loadAttachedFile();
+
+        // Check for file-related queries
+        if (msg.includes('file') || msg.includes('attach') || msg.includes('upload') || msg.includes('document')) {{
+            if (attachedFile) {{
+                return `📎 Attached file: <strong>${{attachedFile.name}}</strong> (${{(attachedFile.size / 1024).toFixed(1)}} KB)<br><br>Preview: ${{attachedFile.content.substring(0, 200)}}...<br><br>I'll reference this file when answering your questions about the patient.`;
+            }} else {{
+                return `No file is currently attached. Click the 📎 button below to attach medical records, lab results, or other relevant documents.`;
+            }}
+        }}
 
         if (msg.includes('clear') || msg.includes('reset')) {{
             clearChatHistory();
@@ -3899,9 +4069,11 @@ def add_patient_chat(patient):
         }} else if (msg.includes('summary') || msg.includes('overview')) {{
             return `Patient Summary:\\n\\n${{p.name}}, ${{p.age}} yr old ${{p.gender}}\\nDepartment: ${{p.department}}\\nLOS: ${{p.los}} days\\nRisk Level: ${{p.risk}}\\n\\nKey Labs:\\n• Glucose: ${{p.glucose}}\\n• Creatinine: ${{p.creatinine}}\\n• Hematocrit: ${{p.hematocrit}}%\\n\\nType 'recommend' for care suggestions.`;
         }} else if (msg.includes('help')) {{
-            return `I can help you with:\\n• Patient demographics (name, age, gender)\\n• Lab results (glucose, creatinine, hematocrit, sodium, BUN)\\n• Risk assessment\\n• Length of stay analysis\\n• Care recommendations\\n• Overall summary\\n\\nTry: "What are the lab results?" or "Any care recommendations?"`;
+            const fileNote = attachedFile ? `\\n• Attached files: ${{attachedFile.name}}` : '\\n• Attach files (click 📎 to add documents)';
+            return `I can help you with:\\n• Patient demographics (name, age, gender)\\n• Lab results (glucose, creatinine, hematocrit, sodium, BUN)\\n• Risk assessment\\n• Length of stay analysis\\n• Care recommendations\\n• Overall summary${{fileNote}}\\n\\nTry: "What are the lab results?" or "Any care recommendations?"`;
         }} else {{
-            return `I can answer questions about ${{p.name}}'s medical record. Try asking about:\\n• Lab results (glucose, creatinine, etc.)\\n• Risk level and readmission history\\n• Care recommendations\\n• Length of stay\\n\\nType "help" for more options or "summary" for an overview.`;
+            const fileHint = attachedFile ? `\\n\\n📎 I also have access to the attached file: ${{attachedFile.name}}` : '';
+            return `I can answer questions about ${{p.name}}'s medical record. Try asking about:\\n• Lab results (glucose, creatinine, etc.)\\n• Risk level and readmission history\\n• Care recommendations\\n• Length of stay${{fileHint}}\\n\\nType "help" for more options or "summary" for an overview.`;
         }}
     }}
 
