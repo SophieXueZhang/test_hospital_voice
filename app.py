@@ -553,6 +553,42 @@ def load_data():
     
     return df, disease_cols
 
+# Patient Notes Management Functions
+NOTES_FILE = "data/patient_notes.json"
+
+def load_patient_notes():
+    """Load all patient notes from JSON file"""
+    if os.path.exists(NOTES_FILE):
+        try:
+            with open(NOTES_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"Error loading notes: {e}")
+            return {}
+    return {}
+
+def save_patient_notes(notes_dict):
+    """Save all patient notes to JSON file"""
+    try:
+        os.makedirs(os.path.dirname(NOTES_FILE), exist_ok=True)
+        with open(NOTES_FILE, 'w', encoding='utf-8') as f:
+            json.dump(notes_dict, f, ensure_ascii=False, indent=2)
+        return True
+    except Exception as e:
+        print(f"Error saving notes: {e}")
+        return False
+
+def get_patient_notes(patient_id):
+    """Get notes for a specific patient"""
+    notes = load_patient_notes()
+    return notes.get(str(patient_id), "")
+
+def update_patient_notes(patient_id, note_text):
+    """Update notes for a specific patient"""
+    notes = load_patient_notes()
+    notes[str(patient_id)] = note_text
+    return save_patient_notes(notes)
+
 def create_chart_template():
     """Create a consistent chart template with Nordic styling"""
     template = {
@@ -630,7 +666,11 @@ def generate_patient_response(patient, user_question):
             'neutrophils': patient['neutrophils'],
             'blood_urea_nitrogen': patient['bloodureanitro']
         }
-        
+
+        # Get patient notes
+        patient_notes = get_patient_notes(patient_data['id'])
+        notes_section = f"\n\nAdditional Clinical Notes:\n{patient_notes}" if patient_notes else ""
+
         # Create detailed system prompt with enhanced medical context
         system_prompt = f"""You are a senior medical AI assistant with expertise in clinical medicine, diagnostics, and patient care. Provide comprehensive, evidence-based medical responses.
 
@@ -652,7 +692,7 @@ Laboratory Results & Vitals:
 - BMI: {patient_data['bmi']:.1f}
 - Sodium: {patient_data['sodium']:.1f} mEq/L (normal: 136-145)
 - Neutrophils: {patient_data['neutrophils']:.1f}% (normal: 50-70)
-- Blood Urea Nitrogen: {patient_data['blood_urea_nitrogen']:.1f} mg/dL (normal: 7-20)
+- Blood Urea Nitrogen: {patient_data['blood_urea_nitrogen']:.1f} mg/dL (normal: 7-20){notes_section}
 
 Clinical Guidelines:
 1. Provide detailed, professional medical analysis
@@ -661,7 +701,8 @@ Clinical Guidelines:
 4. Recommend appropriate diagnostic workup or monitoring
 5. Explain medical reasoning clearly
 6. Address patient-specific risk factors
-7. Consider department-specific protocols and standards"""
+7. Consider department-specific protocols and standards
+8. Pay special attention to any additional clinical notes provided"""
 
         # Make API call to OpenAI with enhanced parameters
         response = client.chat.completions.create(
@@ -1337,6 +1378,55 @@ def show_patient_detail(patient_id, df):
 
     st.markdown("<br>", unsafe_allow_html=True)
 
+    # Patient Notes Section - Added for supplemental information
+    st.markdown("### 📝 Patient Notes")
+    st.markdown("Add supplemental information about this patient (symptoms, observations, care instructions, etc.):")
+
+    # Get existing notes
+    current_notes = get_patient_notes(patient_id)
+
+    # Create a text area for notes
+    notes_key = f"patient_notes_{patient_id}"
+    if notes_key not in st.session_state:
+        st.session_state[notes_key] = current_notes
+
+    # Display text area with existing notes
+    notes_text = st.text_area(
+        "",
+        value=st.session_state[notes_key],
+        height=120,
+        key=f"notes_input_{patient_id}",
+        placeholder="Example: Patient reports mild headache in the morning. Family history of diabetes noted. Prefers vegetarian diet. Food allergies: peanuts..."
+    )
+
+    # Save button
+    col1, col2, col3 = st.columns([1, 1, 4])
+    with col1:
+        if st.button("💾 Save Notes", key=f"save_notes_{patient_id}"):
+            if update_patient_notes(patient_id, notes_text):
+                st.session_state[notes_key] = notes_text
+                st.success("✅ Notes saved successfully!")
+                time.sleep(1)
+                st.rerun()
+            else:
+                st.error("❌ Failed to save notes. Please try again.")
+
+    with col2:
+        if st.button("🗑️ Clear Notes", key=f"clear_notes_{patient_id}"):
+            if update_patient_notes(patient_id, ""):
+                st.session_state[notes_key] = ""
+                st.success("✅ Notes cleared!")
+                time.sleep(1)
+                st.rerun()
+
+    # Show character count
+    if notes_text:
+        st.caption(f"📊 {len(notes_text)} characters | These notes will be included in AI chat responses")
+    else:
+        st.info("💡 Add notes here to provide additional context for the AI assistant during conversations.")
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
     # Clinical Decision Support
     st.markdown("### 🎯 Priority Actions")
     
@@ -1686,24 +1776,102 @@ def show_patient_detail(patient_id, df):
                 {"role": "assistant", "content": f"I've reviewed {patient['full_name']}'s medical records and am ready to discuss {pronoun} case. How may I assist you with the clinical assessment or treatment planning?"}
             ]
 
-        # Display uploaded file info if any
+        # File Upload Section - Always Visible
+        st.markdown("---")
+        st.markdown("### 📎 Attach Files to Chat")
+
         file_key = f"uploaded_file_{patient_id}"
+
+        # Check if there's already an uploaded file
         if file_key in st.session_state:
             file_info = st.session_state[file_key]
 
-            # Display file details in an expander
-            with st.expander(f"📎 **Attached File:** {file_info['name']}", expanded=True):
-                col1, col2 = st.columns([1, 2])
-                with col1:
-                    st.write(f"**Type:** {file_info['type']}")
-                    st.write(f"**Size:** {file_info['size']:,} bytes")
-                with col2:
-                    if 'summary' in file_info and file_info['summary']:
-                        st.write(f"**AI Analysis:** {file_info['summary']}")
+            # Display attached file with remove option
+            st.success(f"✅ **Attached:** {file_info['name']}")
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                if 'summary' in file_info and file_info['summary']:
+                    st.caption(f"**AI Analysis:** {file_info['summary'][:150]}...")
+                else:
+                    st.caption(f"Type: {file_info['type']} • Size: {file_info['size']:,} bytes")
+            with col2:
+                if st.button("🗑️ Remove", key=f"remove_file_{patient_id}"):
+                    del st.session_state[file_key]
+                    st.rerun()
+        else:
+            # Show file uploader
+            uploaded_file = st.file_uploader(
+                "Upload medical records, lab results, images, or related documents",
+                type=['pdf', 'jpg', 'jpeg', 'png', 'txt', 'doc', 'docx', 'csv'],
+                key=f"file_upload_always_{patient_id}",
+                help="Supported formats: PDF, Images (JPG/PNG), Text files, Word documents, CSV"
+            )
 
-                # Show content preview for text files
-                if 'content_preview' in file_info and file_info['content_preview']:
-                    st.text_area("Content Preview", file_info['content_preview'], height=100, disabled=True)
+            if uploaded_file is not None:
+                with st.spinner("Processing file..."):
+                    # Read file content
+                    file_content = ""
+                    file_type_info = ""
+                    try:
+                        uploaded_file.seek(0)
+
+                        if uploaded_file.type == "text/plain":
+                            file_content = str(uploaded_file.read(), "utf-8")
+                            file_type_info = "Text file"
+                        elif uploaded_file.type == "application/pdf":
+                            file_type_info = "PDF file"
+                            file_content = "PDF content (extraction requires PyPDF2 library)"
+                        elif uploaded_file.type.startswith("image/"):
+                            file_type_info = "Image file"
+                            file_content = "Image content (analysis requires computer vision)"
+                        elif uploaded_file.name.endswith('.csv'):
+                            file_content = str(uploaded_file.read(), "utf-8")
+                            file_type_info = "CSV file"
+                        else:
+                            try:
+                                file_content = str(uploaded_file.read(), "utf-8")
+                                file_type_info = "Document"
+                            except:
+                                file_content = "Binary file content"
+                                file_type_info = "Binary file"
+                    except Exception as e:
+                        st.warning(f"Could not read file: {e}")
+                        file_content = "File content unavailable"
+
+                    # Generate AI summary
+                    file_summary = ""
+                    if 'openai_api_key' in st.session_state and st.session_state.openai_api_key and file_content:
+                        try:
+                            from openai import OpenAI
+                            client = OpenAI(api_key=st.session_state.openai_api_key)
+
+                            content_sample = file_content[:2000] + "..." if len(file_content) > 2000 else file_content
+
+                            response = client.chat.completions.create(
+                                model="gpt-3.5-turbo",
+                                messages=[
+                                    {"role": "system", "content": "You are a medical file analyst. Provide concise summaries of medical documents."},
+                                    {"role": "user", "content": f"Analyze this file for patient {patient['full_name']}:\n\nFile: {uploaded_file.name}\nType: {uploaded_file.type}\n\nContent:\n{content_sample}\n\nProvide a brief medical summary (2-3 sentences)."}
+                                ],
+                                max_tokens=150,
+                                temperature=0.1
+                            )
+                            file_summary = response.choices[0].message.content.strip()
+                        except Exception as e:
+                            file_summary = f"AI analysis unavailable: {str(e)}"
+
+                    # Store file info
+                    st.session_state[file_key] = {
+                        "name": uploaded_file.name,
+                        "type": uploaded_file.type,
+                        "size": uploaded_file.size,
+                        "summary": file_summary,
+                        "content_preview": file_content[:500] + "..." if len(file_content) > 500 else file_content
+                    }
+
+                    st.rerun()
+
+        st.markdown("---")
 
         # Display chat history
         for message in st.session_state[chat_key]:
@@ -1743,19 +1911,13 @@ def show_patient_detail(patient_id, df):
                                        key=f"simple_chat_input_{patient_id}")
             # Adjust columns based on voice availability
             if SHOW_VOICE_FEATURES:
-                col1, col2, col3 = st.columns([2, 1, 1])
-                with col1:
-                    submitted = st.form_submit_button("Send", use_container_width=True, type="primary")
-                with col2:
-                    voice_clicked = st.form_submit_button("🎤 Voice", use_container_width=True)
-                with col3:
-                    upload_clicked = st.form_submit_button("📎 File", use_container_width=True)
-            else:
                 col1, col2 = st.columns([3, 1])
                 with col1:
                     submitted = st.form_submit_button("Send", use_container_width=True, type="primary")
                 with col2:
-                    upload_clicked = st.form_submit_button("📎 File", use_container_width=True)
+                    voice_clicked = st.form_submit_button("🎤 Voice", use_container_width=True)
+            else:
+                submitted = st.form_submit_button("Send", use_container_width=True, type="primary")
                 voice_clicked = False  # No voice button in cloud environment
 
         # Handle voice input - unified interface for both environments
@@ -2282,139 +2444,7 @@ def show_patient_detail(patient_id, df):
 
             components.html(html_content, height=250)
 
-        # File upload section (outside of form)
-        if upload_clicked:
-            st.session_state[f"show_uploader_{patient_id}"] = True
-
-        # Show file uploader if triggered
-        if st.session_state.get(f"show_uploader_{patient_id}", False):
-            st.markdown("### 📎 Upload File")
-            uploaded_file = st.file_uploader(
-                "Choose a file to attach to your query",
-                type=['pdf', 'jpg', 'jpeg', 'png', 'txt', 'doc', 'docx'],
-                key=f"file_upload_{patient_id}"
-            )
-
-            if uploaded_file is not None:
-                # Store file info in session state
-                file_key = f"uploaded_file_{patient_id}"
-
-                # Read file content for summary
-                file_content = ""
-                file_type_info = ""
-                try:
-                    # Reset file pointer
-                    uploaded_file.seek(0)
-
-                    if uploaded_file.type == "text/plain":
-                        file_content = str(uploaded_file.read(), "utf-8")
-                        file_type_info = "Text file content analyzed"
-                    elif uploaded_file.type == "application/pdf":
-                        # For PDF, we'll indicate it's available but needs special handling
-                        file_type_info = "PDF file detected - content extraction would require additional libraries"
-                        file_content = "PDF content not directly readable without PyPDF2 or similar library"
-                    elif uploaded_file.type.startswith("image/"):
-                        file_type_info = "Image file detected - visual content cannot be analyzed without computer vision"
-                        file_content = "Image content requires visual analysis capabilities"
-                    elif uploaded_file.name.endswith('.csv'):
-                        # Handle CSV files
-                        file_content = str(uploaded_file.read(), "utf-8")
-                        file_type_info = "CSV file content analyzed"
-                    else:
-                        # Try to read as text
-                        try:
-                            file_content = str(uploaded_file.read(), "utf-8")
-                            file_type_info = "Document content read as text"
-                        except:
-                            file_content = "Binary file - content not readable as text"
-                            file_type_info = "Binary file detected"
-
-                    st.info(file_type_info)
-                except Exception as e:
-                    st.warning(f"Could not read file content: {e}")
-                    file_content = "File content could not be read"
-
-                # Generate file summary using AI based on actual content
-                file_summary = ""
-                if 'openai_api_key' in st.session_state and st.session_state.openai_api_key and file_content:
-                    try:
-                        from openai import OpenAI
-                        client = OpenAI(api_key=st.session_state.openai_api_key)
-
-                        # Limit content length for API call
-                        content_sample = file_content[:2000] + "..." if len(file_content) > 2000 else file_content
-
-                        summary_prompt = f"""
-                        Analyze this uploaded file content for medical relevance to patient {patient['full_name']}:
-
-                        File name: {uploaded_file.name}
-                        File type: {uploaded_file.type}
-                        Patient context: {patient.get('admission_reason', 'General admission')}
-
-                        ACTUAL FILE CONTENT:
-                        {content_sample}
-
-                        Based on the ACTUAL content above, provide a factual medical summary of what this file contains and how it relates to the patient's care. Only describe what you can actually see in the content. If the content is not medical or not readable, say so honestly. Be concise (2-3 sentences).
-                        """
-
-                        response = client.chat.completions.create(
-                            model="gpt-3.5-turbo",
-                            messages=[
-                                {"role": "system", "content": "You are a medical file analyst. Analyze actual file content and provide honest, factual summaries. Never make assumptions about content you cannot see."},
-                                {"role": "user", "content": summary_prompt}
-                            ],
-                            max_tokens=150,
-                            temperature=0.1
-                        )
-
-                        file_summary = response.choices[0].message.content.strip()
-                    except Exception as e:
-                        file_summary = f"Could not generate AI summary: {e}"
-                else:
-                    file_summary = "AI analysis requires OpenAI API key and readable file content"
-
-                st.session_state[file_key] = {
-                    "name": uploaded_file.name,
-                    "type": uploaded_file.type,
-                    "size": uploaded_file.size,
-                    "summary": file_summary,
-                    "content_preview": file_content[:200] + "..." if len(file_content) > 200 else file_content
-                }
-
-                st.success(f"✅ File '{uploaded_file.name}' uploaded successfully!")
-
-                # Display file summary
-                if file_summary:
-                    st.markdown("### 📋 File Analysis")
-                    st.markdown(f"**Summary:** {file_summary}")
-
-                    # Auto-speak the file summary
-                    summary_text = f"File analysis complete. {file_summary}"
-                    if SPEECH_RECOGNITION_AVAILABLE and IS_LOCAL_ENV:
-                        # Local environment - use Python TTS
-                        with st.spinner("🔊 Reading file analysis..."):
-                            if speak_text(summary_text):
-                                st.success("🔊 File analysis narrated")
-                            else:
-                                st.info("File analysis ready (audio unavailable)")
-                    else:
-                        # Cloud environment - use Web Speech API
-                        file_tts_id = f"file_tts_{patient_id}_{int(time.time())}"
-                        file_tts_html = speak_text_web(summary_text, file_tts_id)
-                        components.html(file_tts_html, height=0)
-                        st.success("🔊 File analysis complete")
-
-                st.info("You can now ask questions about this file.")
-
-                # Hide uploader after successful upload
-                st.session_state[f"show_uploader_{patient_id}"] = False
-                st.rerun()
-
-            # Add close button for uploader
-            if st.button("❌ Cancel Upload", key=f"cancel_upload_{patient_id}"):
-                st.session_state[f"show_uploader_{patient_id}"] = False
-                st.rerun()
-
+        # Handle user input submission
         if submitted and user_input:
             # Add user message
             st.session_state[chat_key].append({"role": "user", "content": user_input})
@@ -2444,6 +2474,10 @@ def show_patient_detail(patient_id, df):
                     client = OpenAI(api_key=st.session_state.openai_api_key)
 
                     # Create patient context
+                    # Get patient notes
+                    patient_notes = get_patient_notes(patient_id)
+                    notes_section = f"\n\n                    Additional Clinical Notes:\n                    {patient_notes}" if patient_notes else ""
+
                     patient_context = f"""
                     Patient Information:
                     - Name: {patient['full_name']}
@@ -2466,7 +2500,7 @@ def show_patient_detail(patient_id, df):
                     - Asthma: {'Yes' if patient.get('asthma', 0) == 1 else 'No'}
                     - Pneumonia: {'Yes' if patient.get('pneum', 0) == 1 else 'No'}
                     - Diabetes: {'Yes' if patient.get('dialysisrenalendstage', 0) == 1 else 'No'}
-                    - Depression: {'Yes' if patient.get('depress', 0) == 1 else 'No'}
+                    - Depression: {'Yes' if patient.get('depress', 0) == 1 else 'No'}{notes_section}
                     """
 
                     # Check if there's an uploaded file
@@ -3492,6 +3526,11 @@ def add_floating_chat():
 
 def add_patient_chat(patient):
     """Add patient-specific floating chat widget"""
+    # Get patient notes
+    patient_id = patient['eid']
+    patient_notes = get_patient_notes(patient_id)
+    notes_section = f"\n\n    Additional Notes:\n    {patient_notes}" if patient_notes else ""
+
     # Build patient context for the chatbot
     patient_context = f"""
     Patient: {patient['full_name']}
@@ -3510,7 +3549,7 @@ def add_patient_chat(patient):
     - Blood Urea Nitrogen: {patient['bloodureanitro']:.1f} mg/dL
 
     Risk Status: {patient['risk_level']}
-    Readmission Flag: {'Yes' if patient['readmit_flag'] == 1 else 'No'}
+    Readmission Flag: {'Yes' if patient['readmit_flag'] == 1 else 'No'}{notes_section}
     """
 
     # Encode patient context as base64 to pass to JavaScript
