@@ -553,6 +553,42 @@ def load_data():
     
     return df, disease_cols
 
+# Patient Notes Management Functions
+NOTES_FILE = "data/patient_notes.json"
+
+def load_patient_notes():
+    """Load all patient notes from JSON file"""
+    if os.path.exists(NOTES_FILE):
+        try:
+            with open(NOTES_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"Error loading notes: {e}")
+            return {}
+    return {}
+
+def save_patient_notes(notes_dict):
+    """Save all patient notes to JSON file"""
+    try:
+        os.makedirs(os.path.dirname(NOTES_FILE), exist_ok=True)
+        with open(NOTES_FILE, 'w', encoding='utf-8') as f:
+            json.dump(notes_dict, f, ensure_ascii=False, indent=2)
+        return True
+    except Exception as e:
+        print(f"Error saving notes: {e}")
+        return False
+
+def get_patient_notes(patient_id):
+    """Get notes for a specific patient"""
+    notes = load_patient_notes()
+    return notes.get(str(patient_id), "")
+
+def update_patient_notes(patient_id, note_text):
+    """Update notes for a specific patient"""
+    notes = load_patient_notes()
+    notes[str(patient_id)] = note_text
+    return save_patient_notes(notes)
+
 def create_chart_template():
     """Create a consistent chart template with Nordic styling"""
     template = {
@@ -630,7 +666,11 @@ def generate_patient_response(patient, user_question):
             'neutrophils': patient['neutrophils'],
             'blood_urea_nitrogen': patient['bloodureanitro']
         }
-        
+
+        # Get patient notes
+        patient_notes = get_patient_notes(patient_data['id'])
+        notes_section = f"\n\nAdditional Clinical Notes:\n{patient_notes}" if patient_notes else ""
+
         # Create detailed system prompt with enhanced medical context
         system_prompt = f"""You are a senior medical AI assistant with expertise in clinical medicine, diagnostics, and patient care. Provide comprehensive, evidence-based medical responses.
 
@@ -652,7 +692,7 @@ Laboratory Results & Vitals:
 - BMI: {patient_data['bmi']:.1f}
 - Sodium: {patient_data['sodium']:.1f} mEq/L (normal: 136-145)
 - Neutrophils: {patient_data['neutrophils']:.1f}% (normal: 50-70)
-- Blood Urea Nitrogen: {patient_data['blood_urea_nitrogen']:.1f} mg/dL (normal: 7-20)
+- Blood Urea Nitrogen: {patient_data['blood_urea_nitrogen']:.1f} mg/dL (normal: 7-20){notes_section}
 
 Clinical Guidelines:
 1. Provide detailed, professional medical analysis
@@ -661,7 +701,8 @@ Clinical Guidelines:
 4. Recommend appropriate diagnostic workup or monitoring
 5. Explain medical reasoning clearly
 6. Address patient-specific risk factors
-7. Consider department-specific protocols and standards"""
+7. Consider department-specific protocols and standards
+8. Pay special attention to any additional clinical notes provided"""
 
         # Make API call to OpenAI with enhanced parameters
         response = client.chat.completions.create(
@@ -1631,6 +1672,54 @@ def show_patient_detail(patient_id, df):
         st.write(f"**Risk count:** {patient['rcount']}")
         st.write(f"**Priority level:** {'High' if patient['risk_level'] == 'High Risk' else 'Standard'}")
 
+    # Patient Notes Section
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("### 📝 Patient Notes")
+    st.markdown("Additional information and observations for this patient:")
+
+    # Get existing notes
+    current_notes = get_patient_notes(patient_id)
+
+    # Create a text area for notes
+    notes_key = f"patient_notes_{patient_id}"
+    if notes_key not in st.session_state:
+        st.session_state[notes_key] = current_notes
+
+    # Display text area with existing notes
+    notes_text = st.text_area(
+        "Enter supplemental information about this patient (symptoms, observations, care instructions, etc.):",
+        value=st.session_state[notes_key],
+        height=150,
+        key=f"notes_input_{patient_id}",
+        placeholder="Example: Patient reports mild headache in the morning. Family history of diabetes noted. Prefers vegetarian diet..."
+    )
+
+    # Save button
+    col1, col2, col3 = st.columns([1, 1, 4])
+    with col1:
+        if st.button("💾 Save Notes", key=f"save_notes_{patient_id}"):
+            if update_patient_notes(patient_id, notes_text):
+                st.session_state[notes_key] = notes_text
+                st.success("✅ Notes saved successfully!")
+                time.sleep(1)
+                st.rerun()
+            else:
+                st.error("❌ Failed to save notes. Please try again.")
+
+    with col2:
+        if st.button("🗑️ Clear Notes", key=f"clear_notes_{patient_id}"):
+            if update_patient_notes(patient_id, ""):
+                st.session_state[notes_key] = ""
+                st.success("✅ Notes cleared!")
+                time.sleep(1)
+                st.rerun()
+
+    # Show character count
+    if notes_text:
+        st.caption(f"📊 {len(notes_text)} characters | These notes will be included in AI chat responses")
+    else:
+        st.info("💡 Add notes here to provide additional context for the AI assistant during conversations.")
+
     # Simple chat toggle using Streamlit
     chat_state_key = f"show_chat_{patient_id}"
     if chat_state_key not in st.session_state:
@@ -2444,6 +2533,10 @@ def show_patient_detail(patient_id, df):
                     client = OpenAI(api_key=st.session_state.openai_api_key)
 
                     # Create patient context
+                    # Get patient notes
+                    patient_notes = get_patient_notes(patient_id)
+                    notes_section = f"\n\n                    Additional Clinical Notes:\n                    {patient_notes}" if patient_notes else ""
+
                     patient_context = f"""
                     Patient Information:
                     - Name: {patient['full_name']}
@@ -2466,7 +2559,7 @@ def show_patient_detail(patient_id, df):
                     - Asthma: {'Yes' if patient.get('asthma', 0) == 1 else 'No'}
                     - Pneumonia: {'Yes' if patient.get('pneum', 0) == 1 else 'No'}
                     - Diabetes: {'Yes' if patient.get('dialysisrenalendstage', 0) == 1 else 'No'}
-                    - Depression: {'Yes' if patient.get('depress', 0) == 1 else 'No'}
+                    - Depression: {'Yes' if patient.get('depress', 0) == 1 else 'No'}{notes_section}
                     """
 
                     # Check if there's an uploaded file
@@ -3492,6 +3585,11 @@ def add_floating_chat():
 
 def add_patient_chat(patient):
     """Add patient-specific floating chat widget"""
+    # Get patient notes
+    patient_id = patient['eid']
+    patient_notes = get_patient_notes(patient_id)
+    notes_section = f"\n\n    Additional Notes:\n    {patient_notes}" if patient_notes else ""
+
     # Build patient context for the chatbot
     patient_context = f"""
     Patient: {patient['full_name']}
@@ -3510,7 +3608,7 @@ def add_patient_chat(patient):
     - Blood Urea Nitrogen: {patient['bloodureanitro']:.1f} mg/dL
 
     Risk Status: {patient['risk_level']}
-    Readmission Flag: {'Yes' if patient['readmit_flag'] == 1 else 'No'}
+    Readmission Flag: {'Yes' if patient['readmit_flag'] == 1 else 'No'}{notes_section}
     """
 
     # Encode patient context as base64 to pass to JavaScript
