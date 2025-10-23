@@ -4371,35 +4371,24 @@ def add_patient_chat(patient):
                     messages: [
                         {{
                             role: 'system',
-                            content: `You are a medical AI assistant analyzing patient data. The patient information is:
-Name: ${{patientData.name}}
-Age: ${{patientData.age}} years old
-Gender: ${{patientData.gender}}
-Department: ${{patientData.department}}
-Length of Stay: ${{patientData.los}} days
-Risk Level: ${{patientData.risk}}
-Readmission: ${{patientData.readmit}}
+                            content: `You are a medical AI assistant. Patient: ${{patientData.name}}, ${{patientData.age}}yo ${{patientData.gender}}, ${{patientData.department}}, LOS: ${{patientData.los}} days, Risk: ${{patientData.risk}}, Readmission: ${{patientData.readmit}}
 
-Lab Results:
-- Glucose: ${{patientData.glucose}} mg/dL (normal: 70-100)
-- Creatinine: ${{patientData.creatinine}} mg/dL (normal: 0.6-1.2)
-- Hematocrit: ${{patientData.hematocrit}}% (normal: 38-46% female, 42-54% male)
-- Sodium: ${{patientData.sodium}} mEq/L (normal: 135-145)
-- Blood Urea Nitrogen: ${{patientData.bun}} mg/dL (normal: 7-20)
+Labs: Glucose ${{patientData.glucose}}, Creatinine ${{patientData.creatinine}}, Hematocrit ${{patientData.hematocrit}}%, Sodium ${{patientData.sodium}}, BUN ${{patientData.bun}}
 
-IMPORTANT: Your response will be read aloud via text-to-speech. Format your response as:
+CRITICAL: Be extremely concise. Focus ONLY on:
+1. Abnormal values and their clinical significance (NOT normal values unless asked)
+2. Key recommendations
+3. NO detailed explanations unless specifically requested
+4. NO mentioning specific numbers that are already on screen
+5. Maximum 2-3 sentences
 
-TEXT: [Detailed written response for screen display with specific numbers and analysis]
-VOICE: [Concise summary for voice - focus on KEY POINTS only, NO specific numbers unless explicitly requested, clinical significance and recommendations only]
-
-Example:
-TEXT: Glucose is 145 mg/dL (elevated). This suggests hyperglycemia requiring monitoring.
-VOICE: Glucose elevated, diabetes risk, recommend monitoring.`
+Example good response: "Elevated glucose suggests diabetes risk, recommend monitoring. Critically low hematocrit indicates severe anemia, needs immediate investigation."
+Example bad response: "Carol Thomas, a 64-year-old female, has been in the hospital for 3 days... glucose at 160.6 mg/dL... creatinine level is 1.16 mg/dL..."`
                         }},
                         {{ role: 'user', content: userMessage }}
                     ],
                     temperature: 0.7,
-                    max_tokens: 250
+                    max_tokens: 100
                 }})
             }});
 
@@ -4440,38 +4429,22 @@ VOICE: Glucose elevated, diabetes risk, recommend monitoring.`
 
         chatMessages.scrollTop = chatMessages.scrollHeight;
 
-        // Get intelligent response from GPT
-        const fullResponse = await getGPTResponse(message);
-
-        // Parse TEXT and VOICE sections
-        let textResponse = fullResponse;
-        let voiceResponse = fullResponse;
-
-        // Check if response contains TEXT: and VOICE: markers
-        if (fullResponse.includes('TEXT:') && fullResponse.includes('VOICE:')) {{
-            const textMatch = fullResponse.match(/TEXT:\s*([\s\S]*?)(?=VOICE:|$)/);
-            const voiceMatch = fullResponse.match(/VOICE:\s*([\s\S]*?)$/);
-
-            if (textMatch) textResponse = textMatch[1].trim();
-            if (voiceMatch) voiceResponse = voiceMatch[1].trim();
-        }} else {{
-            // Fallback: use generateVoiceResponse for concise version
-            voiceResponse = generateVoiceResponse(message);
-        }}
+        // Get concise response from GPT (same for screen and voice)
+        const response = await getGPTResponse(message);
 
         const loading = document.getElementById('loading-msg');
         if (loading) {{
-            loading.innerHTML = textResponse;
+            loading.innerHTML = response;
             loading.removeAttribute('id');
 
             // Save bot response to history
-            history.push({{ role: 'assistant', content: textResponse }});
+            history.push({{ role: 'assistant', content: response }});
             saveChatHistory(history);
 
             chatMessages.scrollTop = chatMessages.scrollHeight;
 
-            // Speak the concise voice version
-            speakResponse(voiceResponse);
+            // Speak the same concise response
+            speakResponse(response);
         }}
     }};
     </script>
