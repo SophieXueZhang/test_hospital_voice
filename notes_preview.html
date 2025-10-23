@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Patient Notes Preview</title>
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f8f9fa;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .section {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        h3 {
+            color: #1F2937;
+            margin-top: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .description {
+            color: #6B7280;
+            margin-bottom: 15px;
+        }
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #E2E8F0;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 14px;
+            resize: vertical;
+            min-height: 120px;
+            box-sizing: border-box;
+        }
+        textarea::placeholder {
+            color: #9CA3AF;
+        }
+        .button-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        .save-btn {
+            background: #10B981;
+            color: white;
+        }
+        .clear-btn {
+            background: #EF4444;
+            color: white;
+        }
+        .info-box {
+            background: #EFF6FF;
+            border-left: 4px solid #3B82F6;
+            padding: 12px;
+            margin-top: 10px;
+            border-radius: 4px;
+            color: #1E40AF;
+        }
+        .highlight {
+            background: #FEF3C7;
+            border: 2px solid #F59E0B;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { border-color: #F59E0B; }
+            50% { border-color: #EF4444; }
+        }
+        .location-hint {
+            background: #F3E8FF;
+            border-left: 4px solid #9333EA;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .arrow {
+            font-size: 24px;
+            color: #EF4444;
+            animation: bounce 1s infinite;
+        }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+    </style>
+</head>
+<body>
+    <div class="location-hint">
+        <strong>📍 位置说明：</strong> Patient Notes 功能位于病人详情页中，在 <strong>Laboratory Results</strong> 之后，<strong>Priority Actions</strong> 之前
+    </div>
+
+    <!-- 前面的部分 (示意) -->
+    <div class="section">
+        <h3>🧪 Laboratory Results</h3>
+        <p style="color: #6B7280;">Hematocrit: 13.5 g/dL • Creatinine: 0.95 mg/dL • Glucose: 105.0 mg/dL</p>
+    </div>
+
+    <div style="text-align: center; margin: 20px 0;">
+        <div class="arrow">⬇️</div>
+        <strong style="color: #EF4444; font-size: 18px;">PATIENT NOTES 就在这里！</strong>
+        <div class="arrow">⬇️</div>
+    </div>
+
+    <!-- Patient Notes 部分 - 高亮显示 -->
+    <div class="section highlight">
+        <h3>📝 Patient Notes</h3>
+        <div class="description">
+            Add supplemental information about this patient (symptoms, observations, care instructions, etc.):
+        </div>
+
+        <textarea placeholder="Example: Patient reports mild headache in the morning. Family history of diabetes noted. Prefers vegetarian diet. Food allergies: peanuts..."></textarea>
+
+        <div class="button-row">
+            <button class="save-btn">💾 Save Notes</button>
+            <button class="clear-btn">🗑️ Clear Notes</button>
+        </div>
+
+        <div class="info-box">
+            💡 Add notes here to provide additional context for the AI assistant during conversations.
+        </div>
+    </div>
+
+    <div style="text-align: center; margin: 20px 0;">
+        <div class="arrow" style="transform: rotate(180deg);">⬇️</div>
+    </div>
+
+    <!-- 后面的部分 (示意) -->
+    <div class="section">
+        <h3>🎯 Priority Actions</h3>
+        <p style="color: #6B7280;">Clinical decision support and recommended actions...</p>
+    </div>
+
+    <div style="background: #DCFCE7; border: 2px solid #10B981; padding: 20px; border-radius: 8px; margin-top: 30px;">
+        <h3 style="color: #065F46; margin-top: 0;">✅ 功能特点</h3>
+        <ul style="color: #047857;">
+            <li><strong>文本输入框</strong>: 可以输入任意长度的补充信息</li>
+            <li><strong>保存功能</strong>: 点击 "💾 Save Notes" 保存到 JSON 文件</li>
+            <li><strong>清除功能</strong>: 点击 "🗑️ Clear Notes" 清空笔记</li>
+            <li><strong>AI集成</strong>: 保存的笔记会自动包含在AI聊天回复中</li>
+            <li><strong>字符计数</strong>: 显示已输入的字符数量</li>
+        </ul>
+    </div>
+
+    <div style="background: #FEF2F2; border: 2px solid #EF4444; padding: 20px; border-radius: 8px; margin-top: 20px;">
+        <h3 style="color: #991B1B; margin-top: 0;">🔍 如何查看</h3>
+        <ol style="color: #B91C1C;">
+            <li>确保你的代码是最新的（运行 <code>git pull</code>）</li>
+            <li>启动应用：<code>streamlit run app.py</code></li>
+            <li>在Dashboard中点击任意病人名字</li>
+            <li>向下滚动，经过 Laboratory Results</li>
+            <li>你会看到带有黄色边框的 "📝 Patient Notes" 部分</li>
+        </ol>
+    </div>
+</body>
+</html>
