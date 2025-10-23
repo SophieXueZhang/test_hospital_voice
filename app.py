@@ -1756,13 +1756,12 @@ def show_patient_detail(patient_id, df):
     with st.container():
         col1, col2, col3 = st.columns([8, 1, 1])
         with col3:
-            # Chat button removed - commented out
-            # if st.button("💬 Chat", key=f"chat_toggle_{patient_id}", help="Open AI Assistant"):
-            #     st.session_state[chat_state_key] = not st.session_state[chat_state_key]
-            pass
+            # Chat button to toggle chat interface
+            if st.button("💬 Chat", key=f"chat_toggle_{patient_id}", help="Open AI Assistant"):
+                st.session_state[chat_state_key] = not st.session_state[chat_state_key]
 
-    # Show chat interface if toggled - DISABLED
-    if False:  # Chat interface disabled - was: st.session_state[chat_state_key]
+    # Show chat interface if toggled
+    if st.session_state[chat_state_key]:
         st.markdown("---")
         st.markdown(f"### 🤖 AI Medical Assistant")
         st.markdown(f"**Patient:** {patient['full_name']}")
