@@ -4295,7 +4295,7 @@ def add_patient_chat(patient):
                     'Content-Type': 'application/json'
                 }},
                 body: JSON.stringify({{
-                    model: 'tts-1-hd',  // High quality TTS model
+                    model: 'tts-1',     // Faster TTS model (tts-1 is 2x faster than tts-1-hd)
                     voice: 'nova',      // nova is warm and friendly for medical context
                     input: cleanText,
                     speed: 1.0
@@ -4329,7 +4329,7 @@ def add_patient_chat(patient):
             const cleanText = cleanTextForSpeech(text);
             const utterance = new SpeechSynthesisUtterance(cleanText);
             utterance.lang = 'en-US';
-            utterance.rate = 1.1;  // Slightly faster for quicker response
+            utterance.rate = 1.0;
             utterance.pitch = 1.0;
             utterance.volume = 1.0;
 
@@ -4348,9 +4348,9 @@ def add_patient_chat(patient):
         }}
     }}
 
-    // Main speech function - use browser speech for fast response
+    // Main speech function - use OpenAI TTS for natural voice
     function speakResponse(text) {{
-        speakWithBrowser(text);
+        speakWithOpenAI(text);
     }}
 
     // Get intelligent response using OpenAI GPT
