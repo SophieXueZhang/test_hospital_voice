@@ -1046,7 +1046,75 @@ def show_patient_detail(patient_id, df):
         <div class="main-subtitle">Comprehensive Medical Record</div>
     </div>
     """, unsafe_allow_html=True)
-    
+
+    # Auto-generated AI Summary
+    st.markdown("### 🤖 AI Patient Summary")
+    summary_container = st.container()
+
+    with summary_container:
+        # Generate automatic summary using GPT
+        if 'openai_api_key' in st.session_state and st.session_state.openai_api_key:
+            try:
+                from openai import OpenAI
+                client = OpenAI(api_key=st.session_state.openai_api_key)
+
+                # Build patient context
+                patient_context = f"""Patient: {patient['full_name']}
+Age: {patient['age_at_admission']} years ({patient['age_group']})
+Gender: {'Male' if patient['gender'] == 'M' else 'Female'}
+Department: {patient['facid']}
+Length of Stay: {patient['lengthofstay']} days
+Admission Date: {patient['vdate']}
+Discharge Date: {patient['discharged']}
+
+Lab Results:
+- Glucose: {patient['glucose']:.1f} mg/dL (normal: 70-100)
+- Creatinine: {patient['creatinine']:.2f} mg/dL (normal: 0.6-1.2)
+- Hematocrit: {patient['hematocrit']:.1f}% (normal: 38-46% female, 42-54% male)
+- Sodium: {patient['sodium']:.1f} mEq/L (normal: 135-145)
+- Blood Urea Nitrogen: {patient['bloodureanitro']:.1f} mg/dL (normal: 7-20)
+
+Risk Level: {patient['risk_level']}
+Readmission Flag: {'Yes' if patient['readmit_flag'] == 1 else 'No'}"""
+
+                # Get patient notes if available
+                patient_notes = get_patient_notes(patient['eid'])
+                if patient_notes:
+                    patient_context += f"\n\nAdditional Notes:\n{patient_notes}"
+
+                with st.spinner("Generating summary..."):
+                    response = client.chat.completions.create(
+                        model="gpt-4o",
+                        messages=[
+                            {
+                                "role": "system",
+                                "content": "You are an experienced hospital administrator. Provide a concise executive summary of the patient's current status. Focus on: 1) Key abnormal findings that need attention, 2) Clinical significance, 3) Immediate recommendations. Be brief and actionable. Skip normal values unless specifically relevant."
+                            },
+                            {
+                                "role": "user",
+                                "content": f"Provide an executive summary for this patient:\n\n{patient_context}"
+                            }
+                        ],
+                        max_tokens=200,
+                        temperature=0.7
+                    )
+
+                    summary = response.choices[0].message.content.strip()
+
+                    # Display summary in a nice box
+                    st.markdown(f"""
+                    <div style="background-color: #f0f7ff; padding: 15px; border-radius: 8px; border-left: 4px solid #2E5266; margin-bottom: 20px;">
+                        {summary}
+                    </div>
+                    """, unsafe_allow_html=True)
+
+            except Exception as e:
+                st.info("💡 Auto-summary unavailable. Configure OpenAI API key in Settings.")
+        else:
+            st.info("💡 Configure OpenAI API key in Settings to enable automatic patient summaries.")
+
+    st.markdown("---")
+
     # AI-Based Clinical Summary Section - Only show if patient has identifiable conditions
     if RAG_AVAILABLE:
         # Check if patient has detectable symptoms/conditions
