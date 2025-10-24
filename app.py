@@ -4329,7 +4329,7 @@ def add_patient_chat(patient):
             const cleanText = cleanTextForSpeech(text);
             const utterance = new SpeechSynthesisUtterance(cleanText);
             utterance.lang = 'en-US';
-            utterance.rate = 0.9;
+            utterance.rate = 1.1;  // Slightly faster for quicker response
             utterance.pitch = 1.0;
             utterance.volume = 1.0;
 
@@ -4348,9 +4348,9 @@ def add_patient_chat(patient):
         }}
     }}
 
-    // Main speech function - tries OpenAI first, falls back to browser
+    // Main speech function - use browser speech for fast response
     function speakResponse(text) {{
-        speakWithOpenAI(text);
+        speakWithBrowser(text);
     }}
 
     // Get intelligent response using OpenAI GPT
