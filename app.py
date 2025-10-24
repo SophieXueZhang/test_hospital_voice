@@ -1602,44 +1602,26 @@ Readmission Flag: {'Yes' if patient['readmit_flag'] == 1 else 'No'}"""
     # Lab values stability (30% of score)
     stable_labs = 0
     total_labs = 0
-
-    # Glucose: Use same standard as Laboratory Results (70-100 normal)
-    if 70 <= glucose <= 100:
+    
+    if 70 <= glucose <= 180:
         stable_labs += 1
-        ready_factors.append("Glucose normal")
+        ready_factors.append("Glucose controlled")
     elif glucose > 180:
-        blocking_factors.append("Uncontrolled glucose (>180)")
-    elif glucose > 100:
-        # Elevated but not blocking discharge
-        pass
+        blocking_factors.append("Uncontrolled glucose")
     total_labs += 1
-
-    # Creatinine: Use same standard as Laboratory Results (0.6-1.2 normal)
-    if 0.6 <= creatinine <= 1.2:
+    
+    if 0.6 <= creatinine <= 1.5:
         stable_labs += 1
-        ready_factors.append("Kidney function normal")
+        ready_factors.append("Kidney function stable")
     elif creatinine > 1.5:
-        blocking_factors.append("Kidney function impaired (Cr>1.5)")
-    elif creatinine > 1.2:
-        # Slightly elevated but not blocking
-        pass
+        blocking_factors.append("Kidney function concerns")
     total_labs += 1
-
-    # Hematocrit: Use more realistic standard (gender-appropriate)
-    gender = patient['gender']
-    if gender == 'M':
-        hct_normal = hematocrit >= 42 and hematocrit <= 54
-    else:  # Female
-        hct_normal = hematocrit >= 38 and hematocrit <= 46
-
-    if hct_normal:
+    
+    if hematocrit >= 10:
         stable_labs += 1
-        ready_factors.append("Blood count normal")
-    elif hematocrit < 30:
-        blocking_factors.append("Severe anemia (Hct<30%)")
-    elif hematocrit < 38:
-        # Mild anemia but not blocking
-        pass
+        ready_factors.append("Adequate blood levels")
+    else:
+        blocking_factors.append("Severe anemia needs treatment")
     total_labs += 1
     
     discharge_score += int(30 * stable_labs / total_labs)
