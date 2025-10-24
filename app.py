@@ -1586,12 +1586,22 @@ Readmission Flag: {'Yes' if patient['readmit_flag'] == 1 else 'No'}"""
     
     # Discharge Readiness Assessment
     st.markdown("### 🏠 Discharge Readiness")
-    
+
+    # Add explanation of discharge criteria
+    st.info("""
+    **Discharge Readiness Criteria:**
+    - **Glucose:** 70-180 mg/dL (controlled for discharge, broader than clinical normal of 70-100)
+    - **Creatinine:** 0.6-1.5 mg/dL (acceptable for discharge, vs. clinical normal 0.6-1.2)
+    - **Hematocrit:** ≥10% (minimum safe level, vs. clinical normal 38-54%)
+
+    *Note: Discharge criteria are more permissive than clinical normal ranges to enable safe outpatient management.*
+    """)
+
     # Calculate discharge readiness score
     discharge_score = 0
     blocking_factors = []
     ready_factors = []
-    
+
     # Medical stability (40% of score)
     if not critical_actions and not high_priority:
         discharge_score += 40
