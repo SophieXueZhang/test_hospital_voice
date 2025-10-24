@@ -1047,12 +1047,12 @@ def show_patient_detail(patient_id, df):
     </div>
     """, unsafe_allow_html=True)
 
-    # Auto-generated AI Summary
-    st.markdown("### 🤖 AI Patient Summary")
+    # Auto-generated AI Summary with Evidence-Based Medicine
+    st.markdown("### 🤖 AI Patient Summary (Evidence-Based)")
     summary_container = st.container()
 
     with summary_container:
-        # Generate automatic summary using GPT
+        # Generate automatic summary using GPT with medical literature citations
         if 'openai_api_key' in st.session_state and st.session_state.openai_api_key:
             try:
                 from openai import OpenAI
@@ -1082,20 +1082,69 @@ Readmission Flag: {'Yes' if patient['readmit_flag'] == 1 else 'No'}"""
                 if patient_notes:
                     patient_context += f"\n\nAdditional Notes:\n{patient_notes}"
 
-                with st.spinner("Generating summary..."):
+                # Search for relevant medical literature using RAG system
+                relevant_papers = []
+                literature_context = ""
+
+                if RAG_AVAILABLE:
+                    try:
+                        # Extract symptoms and search for relevant papers
+                        detected_symptoms, diagnostic_info = rag_system.extract_symptoms_from_patient(patient)
+
+                        if detected_symptoms:
+                            # Search for papers related to patient's conditions
+                            search_query = ' '.join(detected_symptoms)
+                            papers = rag_system.search_relevant_papers(search_query, top_k=5)
+
+                            if papers:
+                                # Filter high-quality papers and build literature context
+                                for paper in papers:
+                                    paper_score = paper.get('similarity', paper.get('score', 0))
+                                    score_threshold = 0.65 if 'similarity' in paper else 3
+
+                                    if paper_score >= score_threshold:
+                                        relevant_papers.append(paper)
+                                        # Add paper content to context
+                                        literature_context += f"\n\nRelevant research finding:\n{paper['chunk_text'][:500]}"
+                    except Exception as e:
+                        print(f"RAG search failed: {e}")
+
+                with st.spinner("Generating evidence-based summary..."):
+                    # Enhanced system prompt for evidence-based medicine
+                    system_prompt = """You are an experienced hospital administrator with expertise in evidence-based medicine.
+Provide a concise executive summary of the patient's current status based on their clinical data and relevant medical literature.
+
+Focus on:
+1) Key abnormal findings that need attention
+2) Clinical significance based on medical evidence
+3) Evidence-based recommendations
+4) When relevant literature is provided, reference the key findings naturally in your summary
+
+Be brief, actionable, and evidence-based. Skip normal values unless specifically relevant."""
+
+                    user_prompt = f"""Provide an executive summary for this patient:
+
+{patient_context}"""
+
+                    # Add literature context if available
+                    if literature_context:
+                        user_prompt += f"""\n\nRelevant Medical Literature:{literature_context}
+
+Based on the patient data and medical literature above, provide an evidence-based summary."""
+
                     response = client.chat.completions.create(
                         model="gpt-4o",
                         messages=[
                             {
                                 "role": "system",
-                                "content": "You are an experienced hospital administrator. Provide a concise executive summary of the patient's current status. Focus on: 1) Key abnormal findings that need attention, 2) Clinical significance, 3) Immediate recommendations. Be brief and actionable. Skip normal values unless specifically relevant."
+                                "content": system_prompt
                             },
                             {
                                 "role": "user",
-                                "content": f"Provide an executive summary for this patient:\n\n{patient_context}"
+                                "content": user_prompt
                             }
                         ],
-                        max_tokens=200,
+                        max_tokens=300,  # Increased for evidence-based content
                         temperature=0.7
                     )
 
@@ -1103,10 +1152,55 @@ Readmission Flag: {'Yes' if patient['readmit_flag'] == 1 else 'No'}"""
 
                     # Display summary in a nice box
                     st.markdown(f"""
-                    <div style="background-color: #f0f7ff; padding: 15px; border-radius: 8px; border-left: 4px solid #2E5266; margin-bottom: 20px;">
+                    <div style="background-color: #f0f7ff; padding: 15px; border-radius: 8px; border-left: 4px solid #2E5266; margin-bottom: 10px;">
                         {summary}
                     </div>
                     """, unsafe_allow_html=True)
+
+                    # Display citations if available
+                    if relevant_papers:
+                        st.markdown("**📚 Supporting Evidence:**")
+                        unique_filenames = []
+                        for paper in relevant_papers[:3]:  # Show top 3 most relevant
+                            filename = paper.get('filename', '')
+                            if filename not in unique_filenames:
+                                unique_filenames.append(filename)
+
+                                # Get paper metadata
+                                title = paper.get('title', filename.replace('.pdf', '').replace('.txt', ''))
+                                author = paper.get('authors', 'Unknown')
+                                year = paper.get('year', 'Unknown')
+
+                                # Format citation
+                                display_filename = filename.replace('.pdf', '').replace('.txt', '')
+                                citation_parts = []
+
+                                if author and author != 'Unknown' and author.strip() and author != 'affiliations':
+                                    citation_parts.append(author.strip())
+
+                                if year and year is not None and str(year) != 'Unknown' and str(year) != 'nan' and str(year) != 'None':
+                                    citation_parts.append(str(year))
+
+                                if citation_parts:
+                                    citation = f"{display_filename} ({', '.join(citation_parts)})"
+                                else:
+                                    citation = display_filename
+
+                                st.markdown(f"""
+                                <div style="
+                                    margin-bottom: 8px;
+                                    margin-left: 20px;
+                                    word-wrap: break-word;
+                                    word-break: break-word;
+                                    white-space: normal;
+                                    overflow-wrap: anywhere;
+                                    line-height: 1.4;
+                                    font-size: 0.9em;
+                                    color: #555;
+                                ">
+                                    • {citation}
+                                </div>
+                                """, unsafe_allow_html=True)
 
             except Exception as e:
                 st.info("💡 Auto-summary unavailable. Configure OpenAI API key in Settings.")
