@@ -3600,7 +3600,7 @@ def add_floating_chat():
     </script>
     </body>
     </html>
-    """, height=100, scrolling=False)
+    """, height=650, scrolling=False)
 
 def add_patient_chat(patient):
     """Add patient-specific floating chat widget"""
@@ -4519,7 +4519,7 @@ Bad example: "Carol Thomas, a 64-year-old female, has been in the hospital for 3
     </script>
     </body>
     </html>
-    """, height=100, scrolling=False)
+    """, height=650, scrolling=False)
 
 @st.cache_data(ttl=300)  # Cache responses for 5 minutes
 def get_chatgpt_response(user_message, context=""):
