@@ -3329,6 +3329,20 @@ def add_floating_chat():
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
+    /* Make the iframe container transparent and non-blocking */
+    body, html {
+        margin: 0;
+        padding: 0;
+        background: transparent;
+        pointer-events: none;  /* Allow clicks to pass through */
+        overflow: hidden;
+    }
+
+    /* Re-enable pointer events only for interactive elements */
+    .floating-chat-btn, .floating-chat-window {
+        pointer-events: auto;
+    }
+
     /* Floating chat button */
     .floating-chat-btn {
         position: fixed;
@@ -3600,7 +3614,7 @@ def add_floating_chat():
     </script>
     </body>
     </html>
-    """, height=650, scrolling=False)
+    """, height=800, scrolling=False)
 
 def add_patient_chat(patient):
     """Add patient-specific floating chat widget"""
@@ -3667,6 +3681,20 @@ def add_patient_chat(patient):
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
+    /* Make the iframe container transparent and non-blocking */
+    body, html {{
+        margin: 0;
+        padding: 0;
+        background: transparent;
+        pointer-events: none;  /* Allow clicks to pass through */
+        overflow: hidden;
+    }}
+
+    /* Re-enable pointer events only for interactive elements */
+    .floating-chat-btn, .floating-chat-window {{
+        pointer-events: auto;
+    }}
+
     /* Floating chat button */
     .floating-chat-btn {{
         position: fixed;
@@ -4519,7 +4547,7 @@ Bad example: "Carol Thomas, a 64-year-old female, has been in the hospital for 3
     </script>
     </body>
     </html>
-    """, height=650, scrolling=False)
+    """, height=800, scrolling=False)
 
 @st.cache_data(ttl=300)  # Cache responses for 5 minutes
 def get_chatgpt_response(user_message, context=""):
