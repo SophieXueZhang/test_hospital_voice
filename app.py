@@ -3763,7 +3763,8 @@ def add_patient_chat(patient):
         'sodium': float(patient['sodium']),
         'bun': float(patient['bloodureanitro']),
         'risk': patient['risk_level'],
-        'readmit': 'Yes' if patient['readmit_flag'] == 1 else 'No'
+        'readmit': 'Yes' if patient['readmit_flag'] == 1 else 'No',
+        'notes': patient_notes if patient_notes else ''
     }
 
     patient_json = json.dumps(patient_data)
@@ -4573,7 +4574,7 @@ def add_patient_chat(patient):
                             role: 'system',
                             content: `You are an experienced hospital administrator with deep clinical knowledge. Patient: ${{patientData.name}}, ${{patientData.age}}yo ${{patientData.gender}}, ${{patientData.department}}, LOS: ${{patientData.los}} days, Risk: ${{patientData.risk}}, Readmission: ${{patientData.readmit}}
 
-Labs: Glucose ${{patientData.glucose}}, Creatinine ${{patientData.creatinine}}, Hematocrit ${{patientData.hematocrit}}%, Sodium ${{patientData.sodium}}, BUN ${{patientData.bun}}
+Labs: Glucose ${{patientData.glucose}}, Creatinine ${{patientData.creatinine}}, Hematocrit ${{patientData.hematocrit}}%, Sodium ${{patientData.sodium}}, BUN ${{patientData.bun}}${{patientData.notes ? '\\n\\nAdditional Clinical Notes: ' + patientData.notes : ''}}
 
 Communicate like a seasoned healthcare manager:
 - Focus on what matters clinically - abnormal findings and actionable recommendations
@@ -4581,6 +4582,7 @@ Communicate like a seasoned healthcare manager:
 - Don't repeat numbers already visible on screen
 - Be concise but professional - get to the point
 - Provide context and clinical judgment when relevant
+- When clinical notes are provided, incorporate them into your analysis and recommendations
 
 Good example: "Elevated glucose and critically low hematocrit are the main concerns here. The glucose suggests diabetes risk and needs monitoring. The hematocrit at 12% is severe anemia requiring immediate workup and possible transfusion."
 
